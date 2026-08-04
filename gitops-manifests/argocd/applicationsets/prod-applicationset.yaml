@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: prod-workloads
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - env: prod
+            cluster: prod-k8s
+          - env: staging
+            cluster: staging-k8s
+  template:
+    metadata:
+      name: '{{env}}-app'
+    spec:
+      project: default
+      source:
+        repoURL: 'https://git.enterprise.internal/platform/gitops.git'
+        targetRevision: HEAD
+        path: 'environments/{{env}}'
+      destination:
+        server: 'https://kubernetes.default.svc'
+        namespace: '{{env}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

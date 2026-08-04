@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: infra-repo
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  url: http://gitea-http.git.svc.cluster.local:3000/gitea_admin/infra-repo.git
+  ref:
+    branch: main
