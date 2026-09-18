@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate-gate
+  namespace: prod
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: http-success-rate
+      interval: 30s
+      successCondition: result[0] >= 0.99 # Requires 99% HTTP success rate
+      failureLimit: 2 # 2 consecutive failures trigger automated abort/rollback
+      provider:
+        prometheus:
+          address: http://prometheus-k8s.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{service="{{args.service-name}}",status!~"5.*"}[2m]))
+            /
+            sum(rate(http_requests_total{service="{{args.service-name}}"}[2m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency-p95-gate
+  namespace: prod
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: http-p95-latency
+      interval: 30s
+      successCondition: result[0] <= 0.200 # P95 latency must be <= 200ms
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus-k8s.monitoring.svc.cluster.local:9090
+          query: |
+            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="{{args.service-name}}"}[2m])) by (le))

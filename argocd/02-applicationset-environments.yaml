@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: multi-env-workloads
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - env: staging
+            clusterName: in-cluster
+            server: https://kubernetes.default.svc
+            targetRevision: dev
+          - env: prod
+            clusterName: in-cluster
+            server: https://kubernetes.default.svc
+            targetRevision: main
+  template:
+    metadata:
+      name: '{{env}}-workloads'
+      namespace: argocd
+    spec:
+      project: default
+      source:
+        repoURL: 'https://github.com/korabcenaj/argocd-progressive-delivery.git'
+        targetRevision: '{{targetRevision}}'
+        path: argo-rollouts
+      destination:
+        server: '{{server}}'
+        namespace: '{{env}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

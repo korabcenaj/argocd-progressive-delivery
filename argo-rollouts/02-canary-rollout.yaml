@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: order-gateway-canary
+  namespace: prod
+  labels:
+    app: order-gateway
+spec:
+  replicas: 5
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: order-gateway
+  strategy:
+    canary:
+      analysis:
+        templates:
+          - templateName: success-rate-gate
+        args:
+          - name: service-name
+            value: order-gateway
+      steps:
+        # Step 1: 20% canary traffic for 10 minutes
+        - setWeight: 20
+        - pause: { duration: 10m }
+        # Step 2: 40% canary traffic
+        - setWeight: 40
+        - pause: { duration: 10m }
+        # Step 3: 60% canary traffic with automated analysis
+        - setWeight: 60
+        - pause: { duration: 10m }
+        # Step 4: 80% canary traffic
+        - setWeight: 80
+        - pause: { duration: 5m }
+  template:
+    metadata:
+      labels:
+        app: order-gateway
+    spec:
+      containers:
+        - name: order-gateway
+          image: internal-registry.enterprise.internal/apps/order-gateway:v1.8.0
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
